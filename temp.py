@@ -5,8 +5,8 @@ import time
 
 
 
-time_until_stop = 6
-time_to_charge = 6
+intervals_available = 12
+intervals_to_charge = 6
 treshold = 0
 postcode = "CB2"
 time_of_last_request=0;
@@ -16,8 +16,8 @@ current_time = current_time.strftime("%H:%M")
 
 
 
-def get_charging_list (time_until_stop, time_to_charge, read_time,postcode, treshold = 0):
-    if(time_until_stop<time_to_charge):
+def get_charging_list (intervals_available, intervals_to_charge, read_time,postcode, treshold = 0):
+    if(intervals_available<intervals_to_charge):
         return("Not enough to fully charge")
     headers = {
         'Accept': 'application/json'
@@ -28,9 +28,8 @@ def get_charging_list (time_until_stop, time_to_charge, read_time,postcode, tres
     intensity_forecast = [(m['data']['data'][i]['from'],m['data']['data'][i]['intensity']['forecast']) for i in range(len(m['data']['data']))]
 
     if(treshold == 0):
-        print(intensity_forecast[0:time_until_stop])
-        sorted_forecast = sorted(intensity_forecast[0:time_until_stop], key=lambda tup: tup[1])
-        sorted_time = sorted(sorted_forecast[0:(time_to_charge)], key=lambda tup: tup[0])
+        sorted_forecast = sorted(intensity_forecast[0:intervals_available], key=lambda tup: tup[1])
+        sorted_time = sorted(sorted_forecast[0:(intervals_to_charge)], key=lambda tup: tup[0])
     else:
         sorted_time = [intensity_forecast[i] for i in range(len(intensity_forecast)) if intensity_forecast[i][1]<treshold]
 
