@@ -7,7 +7,9 @@ import time
 
 intervals_available = 12
 intervals_to_charge = 6
+time_charged = timedelta(0)
 treshold = 0
+current_state=-1
 postcode = "CB2"
 time_of_last_request=0;
 today = date.today()
@@ -46,15 +48,22 @@ def request_answer(demo=False):
     bins = [360,260,160,60,0]
     if(demo):
         if (datetime.now() - update_time > timedelta(0, 10)):
+            previous_time = current_time
             current_time = current_time + timedelta(minutes=30)
             print(current_time)
     else:
+        previous_time = current_time
         current_time = datetime.now()
-    val_list = get_charging_list(time_until_stop,time_to_charge,current_time, "CB2")
-    if val_list[0][0]>"%sT%sZ"%(current_time.strftime("%Y-%m-%d"),current_time.strftime("%H:%M:%S")):
-        print(val_list[0], current_time)
-        return 0
+    if(current_time - previous_time >= timedelta(minutes=30)):
+        val_list = get_charging_list(intervals_available,intervals_to_charge,current_time, "CB2")
+        if val_list[0][0]>"%sT%sZ"%(current_time.strftime("%Y-%m-%d"),current_time.strftime("%H:%M:%S")):
+            previous_state = current_state;
+            current_state = 0;
+            return current_state
+        else:
+            previous_state = current_state;
+            current_state = [5-i for i in range(len(bins)) if int(val_list[0][1])>=bins[i]][0]
+            return current_state
     else:
-        return [5-i for i in range(len(bins)) if int(val_list[0][1])>=bins[i]][0]
-
+        return current_state;
 print(request_answer())
