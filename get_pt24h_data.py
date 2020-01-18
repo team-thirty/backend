@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 #from flask_cors import CORS, cross_origin
 import datetime
 import requests
@@ -46,9 +46,9 @@ def get_data():
     # array of 48 emission intensities data points in gCO2eq/kWh in chronological order
     emission_intensities = [r.json()['data']['data'][i]['intensity']['forecast'] for i in range(len(r.json()['data']['data']))]
 
-    dict_object = {'data': emission_intensities}
+    dict_object = {"data": emission_intensities}
 
-    return str(dict_object)
+    return jsonify(dict_object)
 
 @app.route('/set_params', methods=['POST'])
 
@@ -83,7 +83,7 @@ def set_params():
 @app.route('/get_charging_state', methods=['GET'])
 
 def get_charging_status():
-        return({'state': 0})
+        return jsonify(({'state': 0})
 
 if __name__ == '__main__':
     app.run()
