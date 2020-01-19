@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS, cross_origin
+
 import json
 from datetime import datetime, date, timedelta
 import requests
@@ -25,10 +27,15 @@ intervals_available = window*2
 postcode = "CB2"
 
 current_state = 0
+charging_list = None
+applied_time = None
+intensity_forecast = []
 
 app = Flask(__name__)
+CORS(app, support_credentials=True)
 
-app.config.from_object("config.Config")
+
+# app.config.from_object("config.Config")
 
 @app.route('/')
 def hello():
@@ -68,32 +75,56 @@ def get_data():
 @app.route('/set_params', methods=['POST'])
 
 def set_params():
+    global current_time
+    global manual
+    global threshold
+    global time
+    global window  
+    if request.form.get('manual') == None:
+        return 'No data :('
 
-        manual = request.form.get('manual')
-        try:
-                bool_manual = bool(manual)
-        except ValueError:
-                return('Input manual is not boolean.')
+    manual = request.form.get('manual')
+    try:
+        bool_manual = bool(manual)
+    except ValueError:
+        return('Input manual is not boolean.')
 
-        threshold = request.form.get('threshold')
+    str_threshold = request.form.get('threshold')
+    print(threshold)
+    print(request.form)
 
-        try:
-                int_threshold = int(threshold)
-        except ValueError:
-                return('Input threshold is not integer.')
+    try:
+        threshold = int(str_threshold)
+    except ValueError:
+        return('Input threshold is not integer.')
 
-        time = request.form.get('time')
-        try:
-                int_time = int(time)
-        except ValueError:
-                return('Input time is not integer.')
+    time = request.form.get('time')
+    try:
+        int_time = int(time)
+    except ValueError:
+        return('Input time is not integer.')
 
-        window = request.form.get('window')
-        try:
-                int_window = int(window)
-        except ValueError:
-                return('Input window is not integer.')
+    window = request.form.get('window')
+    try:
+        int_window = int(window)
+    except ValueError:
+        return('Input window is not integer.')
 
+    global charging_list
+    global applied_time
+    applied_time = datetime.now()   
+    charging_list = get_charging_list()
+
+    smart_sum = sum(intensity for t, intensity in charging_list)
+    if manual:
+        dumb_sum = sum(intensity for t, intensity in intensity_forecast[:len(charging_list)])
+    else:
+        dumb_sum = sum(intensity for t, intensity in intensity_forecast[:int_time])
+    return jsonify({'smart_sum': smart_sum, 'dumb_sum': dumb_sum})
+
+"""
+returns list of tuples below the threshold [('time_str', 200), ('time_str', 200)]
+"""
 @app.route('/get_charging_list', methods=['GET'])
 def get_charging_list (read_time = current_time):
     global current_time
@@ -111,11 +142,12 @@ def get_charging_list (read_time = current_time):
         'Accept': 'application/json'
     }
 
-    r = requests.get('https://api.carbonintensity.org.uk/regional/intensity/%sT%sZ/fw48h/postcode/%s'%(read_time.strftime("%Y-%m-%d"),read_time.strftime("%H:%M:%S") , postcode), params={}, headers=headers)
+    r = requests.get('https://api.carbonintensity.org.uk/regional/intensity/%sT%sZ/fw24h/postcode/%s'%(read_time.strftime("%Y-%m-%d"),read_time.strftime("%H:%M:%S") , postcode), params={}, headers=headers)
     m = r.json()
-    intensity_forecast = [(m['data']['data'][i]['from'],m['data']['data'][i]['intensity']['forecast']) for i in range(len(m['data']['data']))]
+    global intensity_forecast
+    intensity_forecast = [(applied_time + timedelta(seconds=10*i), m['data']['data'][i]['intensity']['forecast']) for i in range(len(m['data']['data']))]
 
-    if(threshold == 0):
+    if(manual == False):
         sorted_forecast = sorted(intensity_forecast[0:intervals_available], key=lambda tup: tup[1])
         sorted_time = sorted(sorted_forecast[0:(intervals_to_charge)], key=lambda tup: tup[0])
     else:
@@ -131,39 +163,22 @@ def get_charging_state(demo=False):
     global threshold
     global time
     global window
-    global current_state    
-
-
-    intervals_to_charge = time*2
-    intervals_available = window*2
-
+    global current_state
 
     bins = [360,260,160,60,0]
-    if(demo):
-        if (datetime.now() - update_time > timedelta(0, 10)):
-            previous_time = current_time
-            current_time = current_time + timedelta(minutes=30)
-    else:
-        previous_time = current_time
-        current_time = datetime.now()
-    if(current_time - previous_time >= timedelta(minutes=30)):
-        intervals_available -= 1
-        val_list = get_charging_list()
-        if val_list[0][0]>"%sT%sZ"%(current_time.strftime("%Y-%m-%d"),current_time.strftime("%H:%M:%S")):
-            #previous_state = current_state;
-            current_state = 0
-            return current_state
-        else:
-            intervals_to_charge -= 1
-            #previous_state = current_state;
-            current_state = [5-i for i in range(len(bins)) if int(val_list[0][1])>=bins[i]][0]
-            return jsonify({'state': current_state})
-    else:
-        return jsonify({'state': current_state})
-
-
-
-
+    # returns list of tuples below the threshold [('time_str', 200), ('time_str', 200)]
+    charging_list = get_charging_list()
+    current_state = 0
+    current_intensity = "unknown"
+    print(f"charging list: {charging_list}")
+    for tuple_time, tuple_intensity in charging_list:
+        if tuple_time < datetime.now() < tuple_time + timedelta(seconds=10):
+            print(f"In if with {tuple_time}")
+            current_state = [5-i for i in range(len(bins)) if int(tuple_intensity)>=bins[i]][0]
+            current_intensity = tuple_intensity
+            print(f"Current state {current_state}")
+            
+    return jsonify({'state': current_state, 'current_intensity': current_intensity})
 
 if __name__ == '__main__':
     app.run()

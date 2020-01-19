@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify
-#from flask_cors import CORS, cross_origin
+from flask_cors import CORS, cross_origin
 import datetime
 import requests
 
 app = Flask(__name__)
-#CORS(app, support_credentials=True)
+CORS(app, support_credentials=True)
 
 
 @app.route('/')
@@ -26,7 +26,7 @@ window = 5
 
 
 @app.route('/get_graph_data', methods=['GET'])
-#@cross_origin(supports_credentials=True)
+@cross_origin(supports_credentials=True)
 def get_data():
 
     print('something works')
@@ -83,7 +83,7 @@ def set_params():
 @app.route('/get_charging_state', methods=['GET'])
 
 def get_charging_status():
-        return jsonify(({'state': 0})
+        return jsonify({'state': 0})
 
 if __name__ == '__main__':
     app.run()
