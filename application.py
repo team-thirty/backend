@@ -79,17 +79,19 @@ def set_params():
     global manual
     global threshold
     global time
-    global window  
-    if request.form.get('manual') == None:
+    global window
+    
+    req_data = request.get_json(force=True)
+    if req_data['manual'] == None:
         return 'No data :('
 
-    manual = request.form.get('manual')
+    str_manual = req_data['manual']
     try:
-        bool_manual = bool(manual)
+        manual = bool(str_manual)
     except ValueError:
         return('Input manual is not boolean.')
 
-    str_threshold = request.form.get('threshold')
+    str_threshold = req_data['threshold']
     print(threshold)
     print(request.form)
 
@@ -98,15 +100,15 @@ def set_params():
     except ValueError:
         return('Input threshold is not integer.')
 
-    time = request.form.get('time')
+    str_time = req_data['time']
     try:
-        int_time = int(time)
+        time = int(str_time)
     except ValueError:
         return('Input time is not integer.')
 
-    window = request.form.get('window')
+    str_window = req_data['window']
     try:
-        int_window = int(window)
+        window = int(str_window)
     except ValueError:
         return('Input window is not integer.')
 
@@ -119,7 +121,7 @@ def set_params():
     if manual:
         dumb_sum = sum(intensity for t, intensity in intensity_forecast[:len(charging_list)])
     else:
-        dumb_sum = sum(intensity for t, intensity in intensity_forecast[:int_time])
+        dumb_sum = sum(intensity for t, intensity in intensity_forecast[:time*2])
     return jsonify({'smart_sum': smart_sum, 'dumb_sum': dumb_sum})
 
 """
@@ -127,12 +129,11 @@ returns list of tuples below the threshold [('time_str', 200), ('time_str', 200)
 """
 @app.route('/get_charging_list', methods=['GET'])
 def get_charging_list (read_time = current_time):
-    global current_time
-    global manual
-    global threshold
-    global time
-    global window    
     
+    print(f"manual: {manual}, {type(manual)}")
+    print(f"threshold: {threshold}, {type(threshold)}")
+    print(f"time: {time}, {type(time)}")
+    print(f"window: {window}, {type(window)}")
     intervals_to_charge = time*2
     intervals_available = window*2
 
@@ -159,11 +160,13 @@ def get_charging_list (read_time = current_time):
 
 def get_charging_state(demo=False):
     global current_time
-    global manual
-    global threshold
-    global time
-    global window
     global current_state
+    print(f"Manual: {manual}")
+    print(f"threshold: {threshold}")
+    print(f"threshold: {threshold}")
+    print(f"time: {time}")
+    print(f"time: {time}")
+    print(f"window: {window}")
 
     bins = [360,260,160,60,0]
     # returns list of tuples below the threshold [('time_str', 200), ('time_str', 200)]
